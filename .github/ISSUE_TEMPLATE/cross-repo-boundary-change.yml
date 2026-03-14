@@ -1,0 +1,29 @@
+name: Cross-repo boundary change
+description: Track a dependency or ownership change that affects more than one repo.
+title: "[boundary] "
+labels: ["boundary", "cross-repo"]
+body:
+  - type: input
+    id: binder
+    attributes:
+      label: Binder ID
+      placeholder: "#binder/core-dependency-matrix"
+    validations:
+      required: true
+  - type: textarea
+    id: repos
+    attributes:
+      label: Affected repos
+      description: List the dependency owner first, then downstream repos.
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: Boundary change
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks and rollout notes

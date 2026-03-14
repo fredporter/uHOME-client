@@ -1,0 +1,14 @@
+name: Promote
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - develop
+
+jobs:
+  promote:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    uses: fredporter/uDOS-dev/.github/workflows/promote.yml@main

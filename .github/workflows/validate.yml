@@ -1,0 +1,17 @@
+name: Validate
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+      - main
+  workflow_dispatch:
+
+jobs:
+  validate:
+    uses: fredporter/uDOS-dev/.github/workflows/validate.yml@main
+    with:
+      governance_mode: public
