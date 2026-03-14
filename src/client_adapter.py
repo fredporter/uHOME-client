@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Callable
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 import sys
 
 
@@ -46,7 +46,7 @@ def attach_runtime_targets(offer: dict, base_url: str) -> dict:
                 "name": "launcher_start",
                 "url": f"{base_url}/api/launcher/start",
                 "method": "POST",
-                "json": {"presentation": None},
+                "json": {},
             }
         )
     if {"media.browse", "controller.navigate"} & capabilities:
@@ -83,7 +83,9 @@ def probe_runtime_targets(
 
 def _default_fetcher(url: str, method: str = "GET", payload: dict | None = None) -> dict:
     data = None if payload is None else json.dumps(payload).encode("utf-8")
-    with urlopen(url, timeout=2, data=data) as response:  # noqa: S310
+    headers = {"Content-Type": "application/json"} if payload is not None else {}
+    request = Request(url, data=data, headers=headers, method=method)
+    with urlopen(request, timeout=2) as response:  # noqa: S310
         return json.loads(response.read().decode("utf-8"))
 
 

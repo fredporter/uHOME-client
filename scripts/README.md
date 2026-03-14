@@ -5,6 +5,7 @@
 Current script surfaces include:
 
 - `run-uhome-client-checks.sh` for repo activation validation
+- `smoke/` for runtime-safe external-process smoke scripts
 
 Boundary rule:
 
