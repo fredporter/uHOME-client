@@ -25,6 +25,7 @@ require_file "$REPO_ROOT/src/README.md"
 require_file "$REPO_ROOT/src/session-contract.json"
 require_file "$REPO_ROOT/src/surface-map.json"
 require_file "$REPO_ROOT/scripts/README.md"
+require_file "$REPO_ROOT/scripts/smoke/session_offer.py"
 require_file "$REPO_ROOT/tests/README.md"
 require_file "$REPO_ROOT/config/README.md"
 require_file "$REPO_ROOT/examples/README.md"
@@ -71,5 +72,8 @@ if rg -n '/Users/fredbook/Code|~/Users/fredbook/Code' \
   echo "private local-root reference found in uHOME-client" >&2
   exit 1
 fi
+
+python3 "$REPO_ROOT/scripts/smoke/session_offer.py" --json >/dev/null
+python3 -m unittest discover -s tests -p 'test_*.py'
 
 echo "uHOME-client checks passed"
