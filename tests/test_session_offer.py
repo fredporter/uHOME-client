@@ -8,7 +8,12 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from client_adapter import attach_runtime_targets, build_offer, probe_runtime_targets
+from client_adapter import (
+    attach_runtime_targets,
+    build_offer,
+    probe_local_server_app,
+    probe_runtime_targets,
+)
 
 
 class SessionOfferTests(unittest.TestCase):
@@ -24,12 +29,20 @@ class SessionOfferTests(unittest.TestCase):
         offer = build_offer(REPO_ROOT, surface_name="controller-browser")
         enriched = attach_runtime_targets(offer, base_url="http://runtime.local")
 
-        def _fetch(url: str) -> dict:
-            return {"url": url, "ok": True}
+        def _fetch(url: str, method: str, payload) -> dict:
+            return {"url": url, "method": method, "payload": payload, "ok": True}
 
         probed = probe_runtime_targets(enriched, fetcher=_fetch)
         self.assertEqual(len(probed["runtime_probe"]), len(enriched["runtime_targets"]))
         self.assertTrue(all(item["ok"] for item in probed["runtime_probe"]))
+        self.assertIn("POST", [item["method"] for item in probed["runtime_probe"]])
+
+    def test_adapter_probes_local_server_app(self) -> None:
+        offer = build_offer(REPO_ROOT, surface_name="controller-browser")
+        enriched = attach_runtime_targets(offer, base_url="http://127.0.0.1:8000")
+        probed = probe_local_server_app(enriched, workspace_root=REPO_ROOT.parent)
+        self.assertEqual(len(probed["local_runtime_probe"]), len(enriched["runtime_targets"]))
+        self.assertTrue(all(item["status_code"] == 200 for item in probed["local_runtime_probe"]))
 
     def test_session_offer_script_renders_default_surface(self) -> None:
         proc = subprocess.run(

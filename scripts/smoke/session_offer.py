@@ -11,13 +11,14 @@ import sys
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from client_adapter import attach_runtime_targets, build_offer, probe_runtime_targets
+from client_adapter import attach_runtime_targets, build_offer, probe_local_server_app, probe_runtime_targets
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Render a uHOME-client starter session offer")
     parser.add_argument("--surface", help="Surface name to render")
     parser.add_argument("--server-url", default="http://127.0.0.1:8000", help="uHOME-server base URL")
     parser.add_argument("--probe", action="store_true", help="Probe runtime targets")
+    parser.add_argument("--local-app", action="store_true", help="Probe an in-process sibling uHOME-server app")
     parser.add_argument("--json", action="store_true", help="Print JSON output")
     args = parser.parse_args()
 
@@ -25,6 +26,8 @@ def main() -> int:
     offer = attach_runtime_targets(offer, base_url=args.server_url)
     if args.probe:
         offer = probe_runtime_targets(offer)
+    if args.local_app:
+        offer = probe_local_server_app(offer, workspace_root=REPO_ROOT.parent)
 
     if args.json:
         print(json.dumps(offer, indent=2))

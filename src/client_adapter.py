@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Callable
 from urllib.request import urlopen
+import sys
 
 
 def load_json(path: Path) -> dict:
@@ -35,15 +36,22 @@ def build_offer(repo_root: Path, surface_name: str | None = None) -> dict:
 
 
 def attach_runtime_targets(offer: dict, base_url: str) -> dict:
-    endpoints = [{"name": "runtime_ready", "url": f"{base_url}/api/runtime/ready"}]
+    endpoints = [{"name": "runtime_ready", "url": f"{base_url}/api/runtime/ready", "method": "GET"}]
 
     capabilities = set(offer["capabilities"])
     if "session.launch" in capabilities:
-        endpoints.append({"name": "launcher_status", "url": f"{base_url}/api/launcher/status"})
-        endpoints.append({"name": "launcher_start", "url": f"{base_url}/api/launcher/start"})
+        endpoints.append({"name": "launcher_status", "url": f"{base_url}/api/launcher/status", "method": "GET"})
+        endpoints.append(
+            {
+                "name": "launcher_start",
+                "url": f"{base_url}/api/launcher/start",
+                "method": "POST",
+                "json": {"presentation": None},
+            }
+        )
     if {"media.browse", "controller.navigate"} & capabilities:
-        endpoints.append({"name": "household_browse", "url": f"{base_url}/api/household/browse"})
-        endpoints.append({"name": "household_status", "url": f"{base_url}/api/household/status"})
+        endpoints.append({"name": "household_browse", "url": f"{base_url}/api/household/browse", "method": "GET"})
+        endpoints.append({"name": "household_status", "url": f"{base_url}/api/household/status", "method": "GET"})
 
     enriched = dict(offer)
     enriched["runtime_targets"] = endpoints
@@ -57,11 +65,12 @@ def probe_runtime_targets(
     fetch = fetcher or _default_fetcher
     results = []
     for endpoint in offer.get("runtime_targets", []):
-        payload = fetch(endpoint["url"])
+        payload = fetch(endpoint["url"], endpoint.get("method", "GET"), endpoint.get("json"))
         results.append(
             {
                 "name": endpoint["name"],
                 "url": endpoint["url"],
+                "method": endpoint.get("method", "GET"),
                 "ok": True,
                 "keys": sorted(payload.keys()),
             }
@@ -72,6 +81,39 @@ def probe_runtime_targets(
     return probed
 
 
-def _default_fetcher(url: str) -> dict:
-    with urlopen(url, timeout=2) as response:  # noqa: S310
+def _default_fetcher(url: str, method: str = "GET", payload: dict | None = None) -> dict:
+    data = None if payload is None else json.dumps(payload).encode("utf-8")
+    with urlopen(url, timeout=2, data=data) as response:  # noqa: S310
         return json.loads(response.read().decode("utf-8"))
+
+
+def probe_local_server_app(offer: dict, workspace_root: Path) -> dict:
+    from fastapi.testclient import TestClient
+
+    server_repo = workspace_root / "uHOME-server"
+    sys.path.insert(0, str(server_repo / "src"))
+    from uhome_server.app import create_app  # type: ignore
+
+    client = TestClient(create_app())
+    results = []
+    for endpoint in offer.get("runtime_targets", []):
+        path = endpoint["url"].replace("http://127.0.0.1:8000", "")
+        method = endpoint.get("method", "GET")
+        if method == "POST":
+            response = client.post(path, json=endpoint.get("json"))
+        else:
+            response = client.get(path)
+        payload = response.json()
+        results.append(
+            {
+                "name": endpoint["name"],
+                "path": path,
+                "method": method,
+                "status_code": response.status_code,
+                "keys": sorted(payload.keys()),
+            }
+        )
+
+    probed = dict(offer)
+    probed["local_runtime_probe"] = results
+    return probed
