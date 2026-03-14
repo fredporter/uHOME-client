@@ -31,11 +31,14 @@ Keep client flows modular and centered on public contracts.
 
 ## Family Relation
 
-uHOME-client consumes uHOME-server and uDOS contracts without owning them.
+uHOME-client consumes uHOME-server and shared uDOS contracts without owning
+them.
 
 ## Activation
 
 The v2 repo activation path is documented in `docs/activation.md`.
+The `v2.0.1` client alignment is documented in
+`docs/v2.0.1-client-alignment.md`.
 
 Run the current repo validation entrypoint with:
 
