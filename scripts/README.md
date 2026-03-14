@@ -6,6 +6,7 @@ Current script surfaces include:
 
 - `run-uhome-client-checks.sh` for repo activation validation
 - `smoke/` for runtime-safe external-process smoke scripts
+- `run-client-server-release-gate.sh` for the hardened client-to-server gate
 
 Boundary rule:
 
