@@ -6,9 +6,31 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT / "src"))
+
+from client_adapter import attach_runtime_targets, build_offer, probe_runtime_targets
 
 
 class SessionOfferTests(unittest.TestCase):
+    def test_adapter_attaches_runtime_targets(self) -> None:
+        offer = build_offer(REPO_ROOT, surface_name="remote-control")
+        enriched = attach_runtime_targets(offer, base_url="http://runtime.local")
+        target_names = [target["name"] for target in enriched["runtime_targets"]]
+        self.assertIn("runtime_ready", target_names)
+        self.assertIn("launcher_status", target_names)
+        self.assertIn("household_status", target_names)
+
+    def test_adapter_probes_runtime_targets_with_stub_fetcher(self) -> None:
+        offer = build_offer(REPO_ROOT, surface_name="controller-browser")
+        enriched = attach_runtime_targets(offer, base_url="http://runtime.local")
+
+        def _fetch(url: str) -> dict:
+            return {"url": url, "ok": True}
+
+        probed = probe_runtime_targets(enriched, fetcher=_fetch)
+        self.assertEqual(len(probed["runtime_probe"]), len(enriched["runtime_targets"]))
+        self.assertTrue(all(item["ok"] for item in probed["runtime_probe"]))
+
     def test_session_offer_script_renders_default_surface(self) -> None:
         proc = subprocess.run(
             [sys.executable, str(REPO_ROOT / "scripts" / "smoke" / "session_offer.py"), "--json"],
@@ -22,6 +44,7 @@ class SessionOfferTests(unittest.TestCase):
         self.assertEqual(payload["surface"], "living-room-kiosk")
         self.assertEqual(payload["runtime_owner"], "uHOME-server")
         self.assertIn("session.launch", payload["capabilities"])
+        self.assertIn("runtime_targets", payload)
 
     def test_session_offer_script_renders_remote_control_surface(self) -> None:
         proc = subprocess.run(

@@ -6,44 +6,25 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import sys
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT / "src"))
 
-def load_json(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def build_offer(repo_root: Path, surface_name: str | None = None) -> dict:
-    session_contract = load_json(repo_root / "src" / "session-contract.json")
-    surface_map = load_json(repo_root / "src" / "surface-map.json")
-
-    surfaces = surface_map["surfaces"]
-    if surface_name is None:
-        surface = next(item for item in surfaces if item["surface"] == session_contract["surface"])
-    else:
-        surface = next(item for item in surfaces if item["surface"] == surface_name)
-
-    capabilities = sorted(set(session_contract["capabilities"]) | set(surface["capabilities"]))
-
-    return {
-        "version": surface_map["version"],
-        "surface": surface["surface"],
-        "transport": surface["transport"],
-        "runtime_owner": surface["runtime_owner"],
-        "shell_adapter": surface["shell_adapter"],
-        "server_contract": session_contract["server_contract"],
-        "capabilities": capabilities,
-        "status": "starter-offer",
-    }
-
+from client_adapter import attach_runtime_targets, build_offer, probe_runtime_targets
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Render a uHOME-client starter session offer")
     parser.add_argument("--surface", help="Surface name to render")
+    parser.add_argument("--server-url", default="http://127.0.0.1:8000", help="uHOME-server base URL")
+    parser.add_argument("--probe", action="store_true", help="Probe runtime targets")
     parser.add_argument("--json", action="store_true", help="Print JSON output")
     args = parser.parse_args()
 
-    repo_root = Path(__file__).resolve().parents[2]
-    offer = build_offer(repo_root, surface_name=args.surface)
+    offer = build_offer(REPO_ROOT, surface_name=args.surface)
+    offer = attach_runtime_targets(offer, base_url=args.server_url)
+    if args.probe:
+        offer = probe_runtime_targets(offer)
 
     if args.json:
         print(json.dumps(offer, indent=2))
@@ -53,6 +34,7 @@ def main() -> int:
         print(f"runtime_owner={offer['runtime_owner']}")
         print(f"shell_adapter={offer['shell_adapter']}")
         print(f"capabilities={','.join(offer['capabilities'])}")
+        print(f"runtime_targets={','.join(target['name'] for target in offer['runtime_targets'])}")
 
     return 0
 
