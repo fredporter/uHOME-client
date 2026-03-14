@@ -39,6 +39,7 @@ class SessionOfferTests(unittest.TestCase):
         wizarded = attach_wizard_targets(offer, wizard_url="http://wizard.local")
         self.assertEqual(wizarded["wizard_targets"][0]["name"], "wizard_dispatch")
         self.assertEqual(wizarded["wizard_targets"][1]["name"], "wizard_workflow_plan")
+        self.assertTrue(wizarded["wizard_contract_source"].endswith("uDOS-wizard/contracts/orchestration-contract.json"))
 
     def test_adapter_probes_runtime_targets_with_stub_fetcher(self) -> None:
         offer = build_offer(REPO_ROOT, surface_name="controller-browser")
@@ -115,6 +116,8 @@ class SessionOfferTests(unittest.TestCase):
         self.assertEqual(brief["workflow_step_count"], 2)
         self.assertEqual(brief["dispatch_request"]["target"], "wizard_dispatch")
         self.assertEqual(brief["dispatch_request"]["surface"], "remote-control")
+        self.assertEqual(brief["callback_contract"]["route"], "/orchestration/callback")
+        self.assertTrue(brief["wizard_contract_source"].endswith("uDOS-wizard/contracts/orchestration-contract.json"))
 
     def test_session_offer_script_renders_default_surface(self) -> None:
         proc = subprocess.run(

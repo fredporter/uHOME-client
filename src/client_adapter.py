@@ -29,6 +29,17 @@ def load_runtime_services(repo_root: Path) -> tuple[dict, list[dict]]:
     return manifest, services
 
 
+def load_wizard_contract(repo_root: Path) -> dict:
+    contract_path = repo_root.parent / "uDOS-wizard" / "contracts" / "orchestration-contract.json"
+    return load_json(contract_path)
+
+
+def _wizard_contract_source_from_offer(offer: dict) -> Path:
+    runtime_source = Path(offer["runtime_service_source"]).resolve()
+    workspace_root = runtime_source.parents[2]
+    return workspace_root / "uDOS-wizard" / "contracts" / "orchestration-contract.json"
+
+
 def _usage_for_service(key: str) -> str:
     if key == "runtime.command-registry":
         return "server endpoint coverage for interactive client surfaces"
@@ -96,21 +107,25 @@ def attach_wizard_targets(offer: dict, wizard_url: str) -> dict:
     enriched = dict(offer)
     targets = []
     if offer.get("transport") == "wizard-assisted":
+        contract_source = _wizard_contract_source_from_offer(offer)
+        contract = load_json(contract_source)
+        routes = contract["routes"]
         surface = offer.get("surface", "remote-control")
         targets.append(
             {
                 "name": "wizard_dispatch",
-                "url": f"{wizard_url}/orchestration/dispatch?task={surface}&mode=auto&surface=remote-control",
-                "method": "GET",
+                "url": f"{wizard_url}{routes['dispatch']['path']}?task={surface}&mode=auto&surface=remote-control",
+                "method": routes["dispatch"]["method"],
             }
         )
         targets.append(
             {
                 "name": "wizard_workflow_plan",
-                "url": f"{wizard_url}/orchestration/workflow-plan?objective=shared-remote-flow&mode=auto",
-                "method": "GET",
+                "url": f"{wizard_url}{routes['workflow_plan']['path']}?objective=shared-remote-flow&mode=auto",
+                "method": routes["workflow_plan"]["method"],
             }
         )
+        enriched["wizard_contract_source"] = str(contract_source)
     enriched["wizard_targets"] = targets
     return enriched
 
@@ -272,6 +287,7 @@ def build_remote_control_bridge_brief(offer: dict, probe_key: str = "local_wizar
         "surface_route": dispatch.get("route_contract", {}).get("surface", dispatch.get("surface", "remote-control")),
         "workflow_plan_version": workflow_plan.get("plan_version", "unknown"),
         "workflow_step_count": workflow_plan.get("step_count", 0),
+        "wizard_contract_source": offer.get("wizard_contract_source"),
     }
     if dispatch:
         bridge_brief["dispatch_request"] = {
@@ -281,6 +297,7 @@ def build_remote_control_bridge_brief(offer: dict, probe_key: str = "local_wizar
             "surface": dispatch.get("request", {}).get("surface", "remote-control"),
         }
         bridge_brief["dispatch_id"] = dispatch.get("dispatch_id")
+        bridge_brief["callback_contract"] = dispatch.get("callback_contract")
 
     enriched = dict(offer)
     enriched["remote_control_bridge_brief"] = bridge_brief
