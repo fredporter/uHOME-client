@@ -22,15 +22,31 @@ def build_offer(repo_root: Path, surface_name: str | None = None) -> dict:
         surface = next(item for item in surfaces if item["surface"] == surface_name)
 
     capabilities = sorted(set(session_contract["capabilities"]) | set(surface["capabilities"]))
+    runtime_services = [
+        {
+            "key": "runtime.command-registry",
+            "owner": "uDOS-core",
+            "consumer": "uHOME-client",
+            "usage": "server endpoint coverage for interactive client surfaces",
+        },
+        {
+            "key": "runtime.capability-registry",
+            "owner": "uDOS-core",
+            "consumer": "uHOME-client",
+            "usage": "capability alignment between session contracts and shell routing",
+        },
+    ]
 
     return {
-        "version": surface_map["version"],
+        "version": "v2.0.2",
+        "foundation_version": surface_map["version"],
         "surface": surface["surface"],
         "transport": surface["transport"],
         "runtime_owner": surface["runtime_owner"],
         "shell_adapter": surface["shell_adapter"],
         "server_contract": session_contract["server_contract"],
         "capabilities": capabilities,
+        "runtime_services": runtime_services,
         "status": "starter-offer",
     }
 

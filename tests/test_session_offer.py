@@ -19,6 +19,10 @@ from client_adapter import (
 class SessionOfferTests(unittest.TestCase):
     def test_adapter_attaches_runtime_targets(self) -> None:
         offer = build_offer(REPO_ROOT, surface_name="remote-control")
+        self.assertEqual(offer["version"], "v2.0.2")
+        self.assertEqual(offer["foundation_version"], "v2.0.1")
+        runtime_service_keys = {service["key"] for service in offer["runtime_services"]}
+        self.assertIn("runtime.command-registry", runtime_service_keys)
         enriched = attach_runtime_targets(offer, base_url="http://runtime.local")
         target_names = [target["name"] for target in enriched["runtime_targets"]]
         self.assertIn("runtime_ready", target_names)
@@ -57,6 +61,9 @@ class SessionOfferTests(unittest.TestCase):
         self.assertEqual(payload["surface"], "living-room-kiosk")
         self.assertEqual(payload["runtime_owner"], "uHOME-server")
         self.assertIn("session.launch", payload["capabilities"])
+        self.assertEqual(payload["version"], "v2.0.2")
+        self.assertEqual(payload["foundation_version"], "v2.0.1")
+        self.assertIn("runtime_services", payload)
         self.assertIn("runtime_targets", payload)
 
     def test_session_offer_script_renders_remote_control_surface(self) -> None:
