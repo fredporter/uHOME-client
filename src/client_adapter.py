@@ -11,9 +11,36 @@ def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def load_runtime_services(repo_root: Path) -> tuple[dict, list[dict]]:
+    manifest_path = repo_root.parent / "uDOS-core" / "contracts" / "runtime-services.json"
+    manifest = load_json(manifest_path)
+    services = [
+        {
+            "key": service["key"],
+            "owner": service["owner"],
+            "route": service["route"],
+            "stability": service["stability"],
+            "consumer": "uHOME-client",
+            "usage": _usage_for_service(service["key"]),
+        }
+        for service in manifest["services"]
+        if "uHOME-client" in service.get("consumers", [])
+    ]
+    return manifest, services
+
+
+def _usage_for_service(key: str) -> str:
+    if key == "runtime.command-registry":
+        return "server endpoint coverage for interactive client surfaces"
+    if key == "runtime.capability-registry":
+        return "capability alignment between session contracts and shell routing"
+    return "shared platform contract consumption"
+
+
 def build_offer(repo_root: Path, surface_name: str | None = None) -> dict:
     session_contract = load_json(repo_root / "src" / "session-contract.json")
     surface_map = load_json(repo_root / "src" / "surface-map.json")
+    runtime_manifest, runtime_services = load_runtime_services(repo_root)
 
     surfaces = surface_map["surfaces"]
     if surface_name is None:
@@ -22,24 +49,11 @@ def build_offer(repo_root: Path, surface_name: str | None = None) -> dict:
         surface = next(item for item in surfaces if item["surface"] == surface_name)
 
     capabilities = sorted(set(session_contract["capabilities"]) | set(surface["capabilities"]))
-    runtime_services = [
-        {
-            "key": "runtime.command-registry",
-            "owner": "uDOS-core",
-            "consumer": "uHOME-client",
-            "usage": "server endpoint coverage for interactive client surfaces",
-        },
-        {
-            "key": "runtime.capability-registry",
-            "owner": "uDOS-core",
-            "consumer": "uHOME-client",
-            "usage": "capability alignment between session contracts and shell routing",
-        },
-    ]
 
     return {
-        "version": "v2.0.2",
+        "version": runtime_manifest["version"],
         "foundation_version": surface_map["version"],
+        "runtime_service_source": str(repo_root.parent / "uDOS-core" / "contracts" / "runtime-services.json"),
         "surface": surface["surface"],
         "transport": surface["transport"],
         "runtime_owner": surface["runtime_owner"],

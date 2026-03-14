@@ -9,6 +9,8 @@ Current source surfaces include:
 - `client_adapter.py` as the starter runtime-target adapter
 - `client_adapter.py` also reports the `uDOS-core` runtime-service contracts the
   client consumes during `v2.0.2`
+- product runtime-service metadata is loaded from
+  `uDOS-core/contracts/runtime-services.json`
 
 Boundary rule:
 

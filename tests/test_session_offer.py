@@ -21,8 +21,10 @@ class SessionOfferTests(unittest.TestCase):
         offer = build_offer(REPO_ROOT, surface_name="remote-control")
         self.assertEqual(offer["version"], "v2.0.2")
         self.assertEqual(offer["foundation_version"], "v2.0.1")
+        self.assertTrue(offer["runtime_service_source"].endswith("uDOS-core/contracts/runtime-services.json"))
         runtime_service_keys = {service["key"] for service in offer["runtime_services"]}
         self.assertIn("runtime.command-registry", runtime_service_keys)
+        self.assertIn("runtime.capability-registry", runtime_service_keys)
         enriched = attach_runtime_targets(offer, base_url="http://runtime.local")
         target_names = [target["name"] for target in enriched["runtime_targets"]]
         self.assertIn("runtime_ready", target_names)
@@ -63,6 +65,7 @@ class SessionOfferTests(unittest.TestCase):
         self.assertIn("session.launch", payload["capabilities"])
         self.assertEqual(payload["version"], "v2.0.2")
         self.assertEqual(payload["foundation_version"], "v2.0.1")
+        self.assertTrue(payload["runtime_service_source"].endswith("uDOS-core/contracts/runtime-services.json"))
         self.assertIn("runtime_services", payload)
         self.assertIn("runtime_targets", payload)
 
