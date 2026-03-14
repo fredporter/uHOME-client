@@ -92,6 +92,22 @@ def attach_runtime_targets(offer: dict, base_url: str) -> dict:
     return enriched
 
 
+def attach_wizard_targets(offer: dict, wizard_url: str) -> dict:
+    enriched = dict(offer)
+    targets = []
+    if offer.get("transport") == "wizard-assisted":
+        surface = offer.get("surface", "remote-control")
+        targets.append(
+            {
+                "name": "wizard_dispatch",
+                "url": f"{wizard_url}/orchestration/dispatch?task={surface}&mode=auto&surface=remote-control",
+                "method": "GET",
+            }
+        )
+    enriched["wizard_targets"] = targets
+    return enriched
+
+
 def probe_runtime_targets(
     offer: dict,
     fetcher: Callable[[str], dict] | None = None,
@@ -157,6 +173,35 @@ def probe_local_server_app(offer: dict, workspace_root: Path) -> dict:
     return probed
 
 
+def probe_local_wizard_app(offer: dict, workspace_root: Path) -> dict:
+    from fastapi.testclient import TestClient
+
+    wizard_repo = workspace_root / "uDOS-wizard"
+    sys.path.insert(0, str(wizard_repo))
+    from wizard.main import app  # type: ignore
+
+    client = TestClient(app)
+    results = []
+    for endpoint in offer.get("wizard_targets", []):
+        path = endpoint["url"].replace("http://127.0.0.1:8787", "")
+        response = client.get(path)
+        payload = response.json()
+        results.append(
+            {
+                "name": endpoint["name"],
+                "path": path,
+                "method": endpoint.get("method", "GET"),
+                "status_code": response.status_code,
+                "keys": sorted(payload.keys()),
+                "payload": payload,
+            }
+        )
+
+    probed = dict(offer)
+    probed["local_wizard_probe"] = results
+    return probed
+
+
 def build_control_session_brief(offer: dict, probe_key: str = "runtime_probe") -> dict:
     probes = {item["name"]: item for item in offer.get(probe_key, [])}
     readiness = probes.get("runtime_ready", {}).get("payload", {})
@@ -203,4 +248,28 @@ def build_control_session_brief(offer: dict, probe_key: str = "runtime_probe") -
 
     enriched = dict(offer)
     enriched["control_session_brief"] = control_brief
+    return enriched
+
+
+def build_remote_control_bridge_brief(offer: dict, probe_key: str = "local_wizard_probe") -> dict:
+    probes = {item["name"]: item for item in offer.get(probe_key, [])}
+    dispatch = probes.get("wizard_dispatch", {}).get("payload", {})
+    bridge_brief = {
+        "surface": offer.get("surface", "remote-control"),
+        "recommended_action": "request_remote_dispatch" if dispatch else "wizard_unavailable",
+        "provider": dispatch.get("provider", "unknown"),
+        "executor": dispatch.get("executor", "unknown"),
+        "transport": dispatch.get("transport", "unknown"),
+        "surface_route": dispatch.get("surface", "remote-control"),
+    }
+    if dispatch:
+        bridge_brief["dispatch_request"] = {
+            "target": "wizard_dispatch",
+            "task": dispatch.get("task", offer.get("surface", "remote-control")),
+            "mode": dispatch.get("mode", "auto"),
+            "surface": dispatch.get("surface", "remote-control"),
+        }
+
+    enriched = dict(offer)
+    enriched["remote_control_bridge_brief"] = bridge_brief
     return enriched

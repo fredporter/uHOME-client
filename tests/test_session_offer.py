@@ -10,9 +10,12 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from client_adapter import (
     attach_runtime_targets,
+    attach_wizard_targets,
     build_control_session_brief,
+    build_remote_control_bridge_brief,
     build_offer,
     probe_local_server_app,
+    probe_local_wizard_app,
     probe_runtime_targets,
 )
 
@@ -33,6 +36,8 @@ class SessionOfferTests(unittest.TestCase):
         self.assertIn("dashboard_summary", target_names)
         self.assertIn("launcher_status", target_names)
         self.assertIn("household_status", target_names)
+        wizarded = attach_wizard_targets(offer, wizard_url="http://wizard.local")
+        self.assertEqual(wizarded["wizard_targets"][0]["name"], "wizard_dispatch")
 
     def test_adapter_probes_runtime_targets_with_stub_fetcher(self) -> None:
         offer = build_offer(REPO_ROOT, surface_name="controller-browser")
@@ -96,6 +101,16 @@ class SessionOfferTests(unittest.TestCase):
         self.assertEqual(brief["recommended_action"], "start_launcher")
         self.assertEqual(brief["launch_request"]["presentation"], "thin-gui")
 
+    def test_remote_control_bridge_brief_uses_shared_wizard_dispatch(self) -> None:
+        offer = build_offer(REPO_ROOT, surface_name="remote-control")
+        offer = attach_runtime_targets(offer, base_url="http://127.0.0.1:8000")
+        offer = attach_wizard_targets(offer, wizard_url="http://127.0.0.1:8787")
+        probed = probe_local_wizard_app(offer, workspace_root=REPO_ROOT.parent)
+        brief = build_remote_control_bridge_brief(probed)["remote_control_bridge_brief"]
+        self.assertEqual(brief["recommended_action"], "request_remote_dispatch")
+        self.assertEqual(brief["dispatch_request"]["target"], "wizard_dispatch")
+        self.assertEqual(brief["dispatch_request"]["surface"], "remote-control")
+
     def test_session_offer_script_renders_default_surface(self) -> None:
         proc = subprocess.run(
             [sys.executable, str(REPO_ROOT / "scripts" / "smoke" / "session_offer.py"), "--json"],
@@ -152,6 +167,27 @@ class SessionOfferTests(unittest.TestCase):
         payload = json.loads(proc.stdout)
         self.assertIn("control_session_brief", payload)
         self.assertEqual(payload["control_session_brief"]["runtime_status"], "ready")
+
+    def test_session_offer_script_renders_remote_bridge_brief(self) -> None:
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts" / "smoke" / "session_offer.py"),
+                "--surface",
+                "remote-control",
+                "--json",
+                "--wizard-local-app",
+                "--remote-bridge-brief",
+            ],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        payload = json.loads(proc.stdout)
+        self.assertIn("remote_control_bridge_brief", payload)
+        self.assertEqual(payload["remote_control_bridge_brief"]["recommended_action"], "request_remote_dispatch")
 
 
 if __name__ == "__main__":

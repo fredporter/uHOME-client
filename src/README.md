@@ -13,6 +13,8 @@ Current source surfaces include:
   `uDOS-core/contracts/runtime-services.json`
 - `client_adapter.py` now also derives a control-session brief from live
   `uHOME-server` runtime and dashboard surfaces
+- the remote-control lane now also derives a Wizard-assisted bridge brief from
+  shared `/orchestration/dispatch`
 
 Boundary rule:
 
