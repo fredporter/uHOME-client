@@ -38,6 +38,7 @@ class SessionOfferTests(unittest.TestCase):
         self.assertIn("household_status", target_names)
         wizarded = attach_wizard_targets(offer, wizard_url="http://wizard.local")
         self.assertEqual(wizarded["wizard_targets"][0]["name"], "wizard_dispatch")
+        self.assertEqual(wizarded["wizard_targets"][1]["name"], "wizard_workflow_plan")
 
     def test_adapter_probes_runtime_targets_with_stub_fetcher(self) -> None:
         offer = build_offer(REPO_ROOT, surface_name="controller-browser")
@@ -110,6 +111,8 @@ class SessionOfferTests(unittest.TestCase):
         self.assertEqual(brief["recommended_action"], "request_remote_dispatch")
         self.assertEqual(brief["dispatch_version"], "v2.0.2")
         self.assertTrue(str(brief["dispatch_id"]).startswith("dispatch:"))
+        self.assertEqual(brief["workflow_plan_version"], "v2.0.2")
+        self.assertEqual(brief["workflow_step_count"], 2)
         self.assertEqual(brief["dispatch_request"]["target"], "wizard_dispatch")
         self.assertEqual(brief["dispatch_request"]["surface"], "remote-control")
 

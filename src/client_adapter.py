@@ -104,6 +104,13 @@ def attach_wizard_targets(offer: dict, wizard_url: str) -> dict:
                 "method": "GET",
             }
         )
+        targets.append(
+            {
+                "name": "wizard_workflow_plan",
+                "url": f"{wizard_url}/orchestration/workflow-plan?objective=shared-remote-flow&mode=auto",
+                "method": "GET",
+            }
+        )
     enriched["wizard_targets"] = targets
     return enriched
 
@@ -254,6 +261,7 @@ def build_control_session_brief(offer: dict, probe_key: str = "runtime_probe") -
 def build_remote_control_bridge_brief(offer: dict, probe_key: str = "local_wizard_probe") -> dict:
     probes = {item["name"]: item for item in offer.get(probe_key, [])}
     dispatch = probes.get("wizard_dispatch", {}).get("payload", {})
+    workflow_plan = probes.get("wizard_workflow_plan", {}).get("payload", {})
     bridge_brief = {
         "surface": offer.get("surface", "remote-control"),
         "recommended_action": "request_remote_dispatch" if dispatch else "wizard_unavailable",
@@ -262,6 +270,8 @@ def build_remote_control_bridge_brief(offer: dict, probe_key: str = "local_wizar
         "executor": dispatch.get("executor", "unknown"),
         "transport": dispatch.get("transport", "unknown"),
         "surface_route": dispatch.get("route_contract", {}).get("surface", dispatch.get("surface", "remote-control")),
+        "workflow_plan_version": workflow_plan.get("plan_version", "unknown"),
+        "workflow_step_count": workflow_plan.get("step_count", 0),
     }
     if dispatch:
         bridge_brief["dispatch_request"] = {
