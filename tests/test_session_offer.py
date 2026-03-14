@@ -108,6 +108,8 @@ class SessionOfferTests(unittest.TestCase):
         probed = probe_local_wizard_app(offer, workspace_root=REPO_ROOT.parent)
         brief = build_remote_control_bridge_brief(probed)["remote_control_bridge_brief"]
         self.assertEqual(brief["recommended_action"], "request_remote_dispatch")
+        self.assertEqual(brief["dispatch_version"], "v2.0.2")
+        self.assertTrue(str(brief["dispatch_id"]).startswith("dispatch:"))
         self.assertEqual(brief["dispatch_request"]["target"], "wizard_dispatch")
         self.assertEqual(brief["dispatch_request"]["surface"], "remote-control")
 

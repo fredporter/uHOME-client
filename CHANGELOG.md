@@ -10,3 +10,4 @@ All notable changes to `uHOME-client` should be documented in this file.
 - switched client runtime-service consumption to the shared Core contract artifact
 - added a Round B control-session brief built from live server runtime and dashboard probes
 - added a shared Wizard dispatch bridge brief for the remote-control lane
+- aligned the remote-control bridge brief with the common Wizard dispatch contract

@@ -257,18 +257,20 @@ def build_remote_control_bridge_brief(offer: dict, probe_key: str = "local_wizar
     bridge_brief = {
         "surface": offer.get("surface", "remote-control"),
         "recommended_action": "request_remote_dispatch" if dispatch else "wizard_unavailable",
+        "dispatch_version": dispatch.get("dispatch_version", "unknown"),
         "provider": dispatch.get("provider", "unknown"),
         "executor": dispatch.get("executor", "unknown"),
         "transport": dispatch.get("transport", "unknown"),
-        "surface_route": dispatch.get("surface", "remote-control"),
+        "surface_route": dispatch.get("route_contract", {}).get("surface", dispatch.get("surface", "remote-control")),
     }
     if dispatch:
         bridge_brief["dispatch_request"] = {
             "target": "wizard_dispatch",
-            "task": dispatch.get("task", offer.get("surface", "remote-control")),
-            "mode": dispatch.get("mode", "auto"),
-            "surface": dispatch.get("surface", "remote-control"),
+            "task": dispatch.get("request", {}).get("task", offer.get("surface", "remote-control")),
+            "mode": dispatch.get("request", {}).get("mode", "auto"),
+            "surface": dispatch.get("request", {}).get("surface", "remote-control"),
         }
+        bridge_brief["dispatch_id"] = dispatch.get("dispatch_id")
 
     enriched = dict(offer)
     enriched["remote_control_bridge_brief"] = bridge_brief
