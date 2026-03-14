@@ -1,0 +1,9 @@
+{
+  "surface": "controller-browser",
+  "transport": "local-network",
+  "server_contract": "uhome-server",
+  "capabilities": [
+    "media.browse",
+    "controller.navigate"
+  ]
+}

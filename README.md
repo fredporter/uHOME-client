@@ -32,3 +32,13 @@ Keep client flows modular and centered on public contracts.
 ## Family Relation
 
 uHOME-client consumes uHOME-server and uDOS contracts without owning them.
+
+## Activation
+
+The v2 repo activation path is documented in `docs/activation.md`.
+
+Run the current repo validation entrypoint with:
+
+```bash
+scripts/run-uhome-client-checks.sh
+```

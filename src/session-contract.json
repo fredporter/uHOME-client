@@ -1,0 +1,9 @@
+{
+  "surface": "living-room-kiosk",
+  "transport": "local-network",
+  "server_contract": "uhome-server",
+  "capabilities": [
+    "media.browse",
+    "session.launch"
+  ]
+}
