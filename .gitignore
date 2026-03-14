@@ -1,0 +1,15 @@
+.DS_Store
+.pytest_cache/
+__pycache__/
+*.pyc
+.venv/
+venv/
+node_modules/
+dist/
+build/
+.coverage
+coverage/
+.idea/
+.vscode/
+DerivedData/
+.gradle/
