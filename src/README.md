@@ -11,6 +11,8 @@ Current source surfaces include:
   client consumes during `v2.0.2`
 - product runtime-service metadata is loaded from
   `uDOS-core/contracts/runtime-services.json`
+- `client_adapter.py` now also derives a control-session brief from live
+  `uHOME-server` runtime and dashboard surfaces
 
 Boundary rule:
 

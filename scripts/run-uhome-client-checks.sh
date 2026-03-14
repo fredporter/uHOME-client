@@ -77,6 +77,7 @@ fi
 
 python3 "$REPO_ROOT/scripts/smoke/session_offer.py" --json >/dev/null
 python3 "$REPO_ROOT/scripts/smoke/session_offer.py" --json --local-app >/dev/null
+python3 "$REPO_ROOT/scripts/smoke/session_offer.py" --json --local-app --control-brief >/dev/null
 python3 -m unittest discover -s tests -p 'test_*.py'
 
 echo "uHOME-client checks passed"

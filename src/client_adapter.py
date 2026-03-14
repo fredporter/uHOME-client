@@ -66,7 +66,11 @@ def build_offer(repo_root: Path, surface_name: str | None = None) -> dict:
 
 
 def attach_runtime_targets(offer: dict, base_url: str) -> dict:
-    endpoints = [{"name": "runtime_ready", "url": f"{base_url}/api/runtime/ready", "method": "GET"}]
+    endpoints = [
+        {"name": "runtime_ready", "url": f"{base_url}/api/runtime/ready", "method": "GET"},
+        {"name": "runtime_info", "url": f"{base_url}/api/runtime/info", "method": "GET"},
+        {"name": "dashboard_summary", "url": f"{base_url}/api/dashboard/summary", "method": "GET"},
+    ]
 
     capabilities = set(offer["capabilities"])
     if "session.launch" in capabilities:
@@ -103,6 +107,7 @@ def probe_runtime_targets(
                 "method": endpoint.get("method", "GET"),
                 "ok": True,
                 "keys": sorted(payload.keys()),
+                "payload": payload,
             }
         )
 
@@ -143,9 +148,59 @@ def probe_local_server_app(offer: dict, workspace_root: Path) -> dict:
                 "method": method,
                 "status_code": response.status_code,
                 "keys": sorted(payload.keys()),
+                "payload": payload,
             }
         )
 
     probed = dict(offer)
     probed["local_runtime_probe"] = results
     return probed
+
+
+def build_control_session_brief(offer: dict, probe_key: str = "runtime_probe") -> dict:
+    probes = {item["name"]: item for item in offer.get(probe_key, [])}
+    readiness = probes.get("runtime_ready", {}).get("payload", {})
+    runtime_info = probes.get("runtime_info", {}).get("payload", {})
+    dashboard = probes.get("dashboard_summary", {}).get("payload", {})
+    launcher_status = probes.get("launcher_status", {}).get("payload", {})
+
+    defaults = (
+        dashboard.get("workspace_runtime", {})
+        .get("components", {})
+        .get("uhome", {})
+        .get("defaults", {})
+    )
+    preferred_presentation = defaults.get("presentation", {}).get(
+        "value",
+        launcher_status.get("preferred_presentation"),
+    )
+    node_role = defaults.get("node_role", {}).get("value", launcher_status.get("node_role"))
+    running = bool(launcher_status.get("running"))
+
+    if not readiness.get("ok", False):
+        recommended_action = "inspect_runtime"
+    elif not running:
+        recommended_action = "start_launcher"
+    else:
+        recommended_action = "maintain_session"
+
+    control_brief = {
+        "surface": offer["surface"],
+        "runtime_status": readiness.get("status", "unknown"),
+        "server_app": runtime_info.get("app", "unknown"),
+        "recommended_action": recommended_action,
+        "preferred_presentation": preferred_presentation,
+        "node_role": node_role,
+        "running": running,
+        "available_targets": [target["name"] for target in offer.get("runtime_targets", [])],
+    }
+
+    if recommended_action == "start_launcher":
+        control_brief["launch_request"] = {
+            "target": "launcher_start",
+            "presentation": preferred_presentation,
+        }
+
+    enriched = dict(offer)
+    enriched["control_session_brief"] = control_brief
+    return enriched

@@ -76,6 +76,7 @@ def main() -> int:
                 str(repo_root / "scripts" / "smoke" / "session_offer.py"),
                 "--json",
                 "--probe",
+                "--control-brief",
                 "--server-url",
                 base_url,
             ],

@@ -11,6 +11,8 @@ from pathlib import Path
 
 EXPECTED_KEYS = {
     "runtime_ready": {"checks", "ok", "status", "summary", "timestamp"},
+    "runtime_info": {"app", "cwd", "platform", "platform_release", "python_version", "repo_root", "settings", "timestamp"},
+    "dashboard_summary": {"bridge", "ok", "subsystems", "summary", "timestamp", "workspace_runtime"},
     "launcher_status": {
         "active_presentation",
         "node_role",
@@ -76,6 +78,10 @@ def main() -> int:
 
     if seen != set(EXPECTED_KEYS):
         raise RuntimeError(f"probe coverage mismatch: expected {sorted(EXPECTED_KEYS)}, got {sorted(seen)}")
+
+    brief = payload.get("control_session_brief", {})
+    if brief.get("recommended_action") not in {"start_launcher", "maintain_session", "inspect_runtime"}:
+        raise RuntimeError("control_session_brief missing valid recommended_action")
 
     print(json.dumps({"status": "PASS", "checked": sorted(seen)}, indent=2))
     return 0
