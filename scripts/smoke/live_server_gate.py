@@ -79,9 +79,9 @@ def main() -> int:
     if seen != set(EXPECTED_KEYS):
         raise RuntimeError(f"probe coverage mismatch: expected {sorted(EXPECTED_KEYS)}, got {sorted(seen)}")
 
-    brief = payload.get("control_session_brief", {})
+    brief = payload.get("runtime_session_brief", {})
     if brief.get("recommended_action") not in {"start_launcher", "maintain_session", "inspect_runtime"}:
-        raise RuntimeError("control_session_brief missing valid recommended_action")
+        raise RuntimeError("runtime_session_brief missing valid recommended_action")
 
     print(json.dumps({"status": "PASS", "checked": sorted(seen)}, indent=2))
     return 0

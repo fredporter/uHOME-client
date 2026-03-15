@@ -11,8 +11,8 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 from client_adapter import (
     attach_runtime_targets,
     attach_wizard_targets,
-    build_control_session_brief,
-    build_remote_control_bridge_brief,
+    build_remote_runtime_bridge_brief,
+    build_runtime_session_brief,
     build_offer,
     probe_local_server_app,
     probe_local_wizard_app,
@@ -22,10 +22,12 @@ from client_adapter import (
 
 class SessionOfferTests(unittest.TestCase):
     def test_adapter_attaches_runtime_targets(self) -> None:
-        offer = build_offer(REPO_ROOT, surface_name="remote-control")
+        offer = build_offer(REPO_ROOT, surface_name="remote-runtime-bridge")
         self.assertEqual(offer["version"], "v2.0.2")
-        self.assertEqual(offer["foundation_version"], "v2.0.1")
+        self.assertEqual(offer["foundation_version"], "v2.0.3")
         self.assertTrue(offer["runtime_service_source"].endswith("uDOS-core/contracts/runtime-services.json"))
+        self.assertEqual(offer["profile"], "remote-runtime-bridge")
+        self.assertEqual(sorted(offer["family_modes"]), ["integrated-udos", "standalone-uhome"])
         runtime_service_keys = {service["key"] for service in offer["runtime_services"]}
         self.assertIn("runtime.command-registry", runtime_service_keys)
         self.assertIn("runtime.capability-registry", runtime_service_keys)
@@ -42,7 +44,7 @@ class SessionOfferTests(unittest.TestCase):
         self.assertTrue(wizarded["wizard_contract_source"].endswith("uDOS-wizard/contracts/orchestration-contract.json"))
 
     def test_adapter_probes_runtime_targets_with_stub_fetcher(self) -> None:
-        offer = build_offer(REPO_ROOT, surface_name="controller-browser")
+        offer = build_offer(REPO_ROOT, surface_name="shared-mobile-runtime")
         enriched = attach_runtime_targets(offer, base_url="http://runtime.local")
 
         def _fetch(url: str, method: str, payload) -> dict:
@@ -55,27 +57,29 @@ class SessionOfferTests(unittest.TestCase):
         self.assertTrue(all("payload" in item for item in probed["runtime_probe"]))
 
     def test_adapter_probes_local_server_app(self) -> None:
-        offer = build_offer(REPO_ROOT, surface_name="controller-browser")
+        offer = build_offer(REPO_ROOT, surface_name="shared-mobile-runtime")
         enriched = attach_runtime_targets(offer, base_url="http://127.0.0.1:8000")
         probed = probe_local_server_app(enriched, workspace_root=REPO_ROOT.parent)
         self.assertEqual(len(probed["local_runtime_probe"]), len(enriched["runtime_targets"]))
         self.assertTrue(all(item["status_code"] == 200 for item in probed["local_runtime_probe"]))
         self.assertTrue(all("payload" in item for item in probed["local_runtime_probe"]))
 
-    def test_control_session_brief_local_app_reflects_running_session(self) -> None:
-        offer = build_offer(REPO_ROOT, surface_name="living-room-kiosk")
+    def test_runtime_session_brief_local_app_reflects_running_session(self) -> None:
+        offer = build_offer(REPO_ROOT, surface_name="shared-tablet-runtime")
         enriched = attach_runtime_targets(offer, base_url="http://127.0.0.1:8000")
         probed = probe_local_server_app(enriched, workspace_root=REPO_ROOT.parent)
-        briefed = build_control_session_brief(probed, probe_key="local_runtime_probe")
-        brief = briefed["control_session_brief"]
+        briefed = build_runtime_session_brief(probed, probe_key="local_runtime_probe")
+        brief = briefed["runtime_session_brief"]
+        self.assertEqual(brief["profile"], "shared-tablet-runtime")
         self.assertEqual(brief["surface"], "living-room-kiosk")
         self.assertEqual(brief["runtime_status"], "ready")
         self.assertEqual(brief["recommended_action"], "maintain_session")
         self.assertIn("launcher_start", brief["available_targets"])
         self.assertTrue(brief["running"])
 
-    def test_control_session_brief_recommends_launcher_start_when_not_running(self) -> None:
+    def test_runtime_session_brief_recommends_launcher_start_when_not_running(self) -> None:
         offer = {
+            "profile": "shared-tablet-runtime",
             "surface": "living-room-kiosk",
             "runtime_targets": [{"name": "launcher_start"}],
             "runtime_probe": [
@@ -99,16 +103,16 @@ class SessionOfferTests(unittest.TestCase):
                 {"name": "launcher_status", "payload": {"running": False, "preferred_presentation": "thin-gui"}},
             ],
         }
-        brief = build_control_session_brief(offer)["control_session_brief"]
+        brief = build_runtime_session_brief(offer)["runtime_session_brief"]
         self.assertEqual(brief["recommended_action"], "start_launcher")
         self.assertEqual(brief["launch_request"]["presentation"], "thin-gui")
 
-    def test_remote_control_bridge_brief_uses_shared_wizard_dispatch(self) -> None:
-        offer = build_offer(REPO_ROOT, surface_name="remote-control")
+    def test_remote_runtime_bridge_brief_uses_shared_wizard_dispatch(self) -> None:
+        offer = build_offer(REPO_ROOT, surface_name="remote-runtime-bridge")
         offer = attach_runtime_targets(offer, base_url="http://127.0.0.1:8000")
         offer = attach_wizard_targets(offer, wizard_url="http://127.0.0.1:8787")
         probed = probe_local_wizard_app(offer, workspace_root=REPO_ROOT.parent)
-        brief = build_remote_control_bridge_brief(probed)["remote_control_bridge_brief"]
+        brief = build_remote_runtime_bridge_brief(probed)["remote_runtime_bridge_brief"]
         self.assertEqual(brief["recommended_action"], "request_remote_dispatch")
         self.assertEqual(brief["dispatch_version"], "v2.0.2")
         self.assertTrue(str(brief["dispatch_id"]).startswith("dispatch:"))
@@ -129,12 +133,15 @@ class SessionOfferTests(unittest.TestCase):
         )
         self.assertEqual(proc.returncode, 0, proc.stderr)
         payload = json.loads(proc.stdout)
+        self.assertEqual(payload["profile"], "shared-tablet-runtime")
         self.assertEqual(payload["surface"], "living-room-kiosk")
         self.assertEqual(payload["runtime_owner"], "uHOME-server")
         self.assertIn("session.launch", payload["capabilities"])
         self.assertEqual(payload["version"], "v2.0.2")
-        self.assertEqual(payload["foundation_version"], "v2.0.1")
+        self.assertEqual(payload["foundation_version"], "v2.0.3")
         self.assertTrue(payload["runtime_service_source"].endswith("uDOS-core/contracts/runtime-services.json"))
+        self.assertEqual(sorted(payload["deployment_modes"]), ["integrated-udos", "standalone-uhome"])
+        self.assertEqual(sorted(payload["app_targets"]), ["uHOME-app-android", "uHOME-app-ios"])
         self.assertIn("runtime_services", payload)
         self.assertIn("runtime_targets", payload)
 
@@ -144,7 +151,7 @@ class SessionOfferTests(unittest.TestCase):
                 sys.executable,
                 str(REPO_ROOT / "scripts" / "smoke" / "session_offer.py"),
                 "--surface",
-                "remote-control",
+                "remote-runtime-bridge",
                 "--json",
             ],
             cwd=REPO_ROOT,
@@ -154,6 +161,7 @@ class SessionOfferTests(unittest.TestCase):
         )
         self.assertEqual(proc.returncode, 0, proc.stderr)
         payload = json.loads(proc.stdout)
+        self.assertEqual(payload["profile"], "remote-runtime-bridge")
         self.assertEqual(payload["transport"], "wizard-assisted")
         self.assertEqual(payload["shell_adapter"], "uDOS-shell")
 
@@ -173,8 +181,8 @@ class SessionOfferTests(unittest.TestCase):
         )
         self.assertEqual(proc.returncode, 0, proc.stderr)
         payload = json.loads(proc.stdout)
-        self.assertIn("control_session_brief", payload)
-        self.assertEqual(payload["control_session_brief"]["runtime_status"], "ready")
+        self.assertIn("runtime_session_brief", payload)
+        self.assertEqual(payload["runtime_session_brief"]["runtime_status"], "ready")
 
     def test_session_offer_script_renders_remote_bridge_brief(self) -> None:
         proc = subprocess.run(
@@ -182,7 +190,7 @@ class SessionOfferTests(unittest.TestCase):
                 sys.executable,
                 str(REPO_ROOT / "scripts" / "smoke" / "session_offer.py"),
                 "--surface",
-                "remote-control",
+                "remote-runtime-bridge",
                 "--json",
                 "--wizard-local-app",
                 "--remote-bridge-brief",
@@ -194,8 +202,8 @@ class SessionOfferTests(unittest.TestCase):
         )
         self.assertEqual(proc.returncode, 0, proc.stderr)
         payload = json.loads(proc.stdout)
-        self.assertIn("remote_control_bridge_brief", payload)
-        self.assertEqual(payload["remote_control_bridge_brief"]["recommended_action"], "request_remote_dispatch")
+        self.assertIn("remote_runtime_bridge_brief", payload)
+        self.assertEqual(payload["remote_runtime_bridge_brief"]["recommended_action"], "request_remote_dispatch")
 
 
 if __name__ == "__main__":

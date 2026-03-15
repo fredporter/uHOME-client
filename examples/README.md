@@ -5,9 +5,9 @@
 
 Current example lanes:
 
-- `basic-client-session.json` for the smallest client session contract example
+- `basic-client-runtime.json` for the smallest client runtime contract example
 
 Phase 1 rule:
 
-- keep examples aligned to public client surfaces
+- keep examples aligned to public client runtime profiles
 - keep server implementation behavior in `uHOME-server`

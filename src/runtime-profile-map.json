@@ -1,0 +1,68 @@
+{
+  "version": "v2.0.3",
+  "owner": "uHOME-client",
+  "family_modes": [
+    "standalone-uhome",
+    "integrated-udos"
+  ],
+  "profiles": [
+    {
+      "profile": "shared-mobile-runtime",
+      "surface_key": "controller-browser",
+      "transport": "local-network",
+      "runtime_owner": "uHOME-server",
+      "shell_adapter": "uDOS-shell",
+      "deployment_modes": [
+        "standalone-uhome",
+        "integrated-udos"
+      ],
+      "app_targets": [
+        "uHOME-app-android",
+        "uHOME-app-ios"
+      ],
+      "capability_profile": [
+        "controller.navigate",
+        "media.browse"
+      ]
+    },
+    {
+      "profile": "shared-tablet-runtime",
+      "surface_key": "living-room-kiosk",
+      "transport": "local-network",
+      "runtime_owner": "uHOME-server",
+      "shell_adapter": "uDOS-shell",
+      "deployment_modes": [
+        "standalone-uhome",
+        "integrated-udos"
+      ],
+      "app_targets": [
+        "uHOME-app-android",
+        "uHOME-app-ios"
+      ],
+      "capability_profile": [
+        "session.launch",
+        "media.browse"
+      ]
+    },
+    {
+      "profile": "remote-runtime-bridge",
+      "surface_key": "remote-control",
+      "transport": "wizard-assisted",
+      "runtime_owner": "uHOME-server",
+      "shell_adapter": "uDOS-shell",
+      "deployment_modes": [
+        "standalone-uhome",
+        "integrated-udos"
+      ],
+      "app_targets": [
+        "uHOME-app-android",
+        "uHOME-app-ios"
+      ],
+      "capability_profile": [
+        "session.launch",
+        "controller.navigate",
+        "status.observe"
+      ]
+    }
+  ]
+}

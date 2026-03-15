@@ -5,7 +5,7 @@
 Current validation contract:
 
 - `scripts/run-uhome-client-checks.sh` verifies required repo surfaces
-- checked-in client session contracts must stay structurally valid
+- checked-in client runtime-profile contracts must stay structurally valid
 - private local-root references must not leak into tracked client docs
 
 Phase 1 rule:

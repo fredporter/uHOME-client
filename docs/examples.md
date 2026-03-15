@@ -2,7 +2,9 @@
 
 Useful examples:
 
-- kiosk control surfaces
-- local-network controller flows
+- local-network client-runtime flows
+- runtime endpoint consumption
+- app-consumed runtime profiles
+- standalone `uHOME` and integrated `uDOS` client modes
 - status dashboards
 - public contract consumption

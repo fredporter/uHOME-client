@@ -42,34 +42,42 @@ def _wizard_contract_source_from_offer(offer: dict) -> Path:
 
 def _usage_for_service(key: str) -> str:
     if key == "runtime.command-registry":
-        return "server endpoint coverage for interactive client surfaces"
+        return "server endpoint coverage for app-consumed client runtime profiles"
     if key == "runtime.capability-registry":
-        return "capability alignment between session contracts and shell routing"
+        return "capability alignment between runtime profiles and shell routing"
     return "shared platform contract consumption"
 
 
 def build_offer(repo_root: Path, surface_name: str | None = None) -> dict:
-    session_contract = load_json(repo_root / "src" / "session-contract.json")
-    surface_map = load_json(repo_root / "src" / "surface-map.json")
+    runtime_contract = load_json(repo_root / "src" / "runtime-profile-contract.json")
+    profile_map = load_json(repo_root / "src" / "runtime-profile-map.json")
     runtime_manifest, runtime_services = load_runtime_services(repo_root)
 
-    surfaces = surface_map["surfaces"]
+    profiles = profile_map["profiles"]
     if surface_name is None:
-        surface = next(item for item in surfaces if item["surface"] == session_contract["surface"])
+        profile = next(item for item in profiles if item["profile"] == runtime_contract["profile"])
     else:
-        surface = next(item for item in surfaces if item["surface"] == surface_name)
+        profile = next(
+            item
+            for item in profiles
+            if item["profile"] == surface_name or item.get("surface_key") == surface_name
+        )
 
-    capabilities = sorted(set(session_contract["capabilities"]) | set(surface["capabilities"]))
+    capabilities = sorted(set(runtime_contract["capability_profile"]) | set(profile["capability_profile"]))
 
     return {
         "version": runtime_manifest["version"],
-        "foundation_version": surface_map["version"],
+        "foundation_version": profile_map["version"],
         "runtime_service_source": str(repo_root.parent / "uDOS-core" / "contracts" / "runtime-services.json"),
-        "surface": surface["surface"],
-        "transport": surface["transport"],
-        "runtime_owner": surface["runtime_owner"],
-        "shell_adapter": surface["shell_adapter"],
-        "server_contract": session_contract["server_contract"],
+        "family_modes": profile_map.get("family_modes", []),
+        "profile": profile["profile"],
+        "surface": profile["surface_key"],
+        "transport": profile["transport"],
+        "runtime_owner": profile["runtime_owner"],
+        "shell_adapter": profile["shell_adapter"],
+        "deployment_modes": profile.get("deployment_modes", []),
+        "server_contract": runtime_contract["server_contract"],
+        "app_targets": profile.get("app_targets", []),
         "capabilities": capabilities,
         "runtime_services": runtime_services,
         "status": "starter-offer",
@@ -224,7 +232,7 @@ def probe_local_wizard_app(offer: dict, workspace_root: Path) -> dict:
     return probed
 
 
-def build_control_session_brief(offer: dict, probe_key: str = "runtime_probe") -> dict:
+def build_runtime_session_brief(offer: dict, probe_key: str = "runtime_probe") -> dict:
     probes = {item["name"]: item for item in offer.get(probe_key, [])}
     readiness = probes.get("runtime_ready", {}).get("payload", {})
     runtime_info = probes.get("runtime_info", {}).get("payload", {})
@@ -251,7 +259,8 @@ def build_control_session_brief(offer: dict, probe_key: str = "runtime_probe") -
     else:
         recommended_action = "maintain_session"
 
-    control_brief = {
+    runtime_brief = {
+        "profile": offer.get("profile", offer["surface"]),
         "surface": offer["surface"],
         "runtime_status": readiness.get("status", "unknown"),
         "server_app": runtime_info.get("app", "unknown"),
@@ -260,24 +269,26 @@ def build_control_session_brief(offer: dict, probe_key: str = "runtime_probe") -
         "node_role": node_role,
         "running": running,
         "available_targets": [target["name"] for target in offer.get("runtime_targets", [])],
+        "app_targets": offer.get("app_targets", []),
     }
 
     if recommended_action == "start_launcher":
-        control_brief["launch_request"] = {
+        runtime_brief["launch_request"] = {
             "target": "launcher_start",
             "presentation": preferred_presentation,
         }
 
     enriched = dict(offer)
-    enriched["control_session_brief"] = control_brief
+    enriched["runtime_session_brief"] = runtime_brief
     return enriched
 
 
-def build_remote_control_bridge_brief(offer: dict, probe_key: str = "local_wizard_probe") -> dict:
+def build_remote_runtime_bridge_brief(offer: dict, probe_key: str = "local_wizard_probe") -> dict:
     probes = {item["name"]: item for item in offer.get(probe_key, [])}
     dispatch = probes.get("wizard_dispatch", {}).get("payload", {})
     workflow_plan = probes.get("wizard_workflow_plan", {}).get("payload", {})
     bridge_brief = {
+        "profile": offer.get("profile", offer.get("surface", "remote-runtime-bridge")),
         "surface": offer.get("surface", "remote-control"),
         "recommended_action": "request_remote_dispatch" if dispatch else "wizard_unavailable",
         "dispatch_version": dispatch.get("dispatch_version", "unknown"),
@@ -300,5 +311,17 @@ def build_remote_control_bridge_brief(offer: dict, probe_key: str = "local_wizar
         bridge_brief["callback_contract"] = dispatch.get("callback_contract")
 
     enriched = dict(offer)
-    enriched["remote_control_bridge_brief"] = bridge_brief
+    enriched["remote_runtime_bridge_brief"] = bridge_brief
+    return enriched
+
+
+def build_control_session_brief(offer: dict, probe_key: str = "runtime_probe") -> dict:
+    enriched = build_runtime_session_brief(offer, probe_key=probe_key)
+    enriched["control_session_brief"] = enriched["runtime_session_brief"]
+    return enriched
+
+
+def build_remote_control_bridge_brief(offer: dict, probe_key: str = "local_wizard_probe") -> dict:
+    enriched = build_remote_runtime_bridge_brief(offer, probe_key=probe_key)
+    enriched["remote_control_bridge_brief"] = enriched["remote_runtime_bridge_brief"]
     return enriched

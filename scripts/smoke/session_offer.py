@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render a starter client session offer from the checked-in contract assets."""
+"""Render a starter client runtime offer from the checked-in contract assets."""
 
 from __future__ import annotations
 
@@ -14,8 +14,8 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 from client_adapter import (
     attach_runtime_targets,
     attach_wizard_targets,
-    build_control_session_brief,
-    build_remote_control_bridge_brief,
+    build_remote_runtime_bridge_brief,
+    build_runtime_session_brief,
     build_offer,
     probe_local_server_app,
     probe_local_wizard_app,
@@ -23,15 +23,15 @@ from client_adapter import (
 )
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Render a uHOME-client starter session offer")
-    parser.add_argument("--surface", help="Surface name to render")
+    parser = argparse.ArgumentParser(description="Render a uHOME-client starter runtime offer")
+    parser.add_argument("--surface", "--profile", dest="surface", help="Runtime profile or surface key to render")
     parser.add_argument("--server-url", default="http://127.0.0.1:8000", help="uHOME-server base URL")
     parser.add_argument("--wizard-url", default="http://127.0.0.1:8787", help="uDOS-wizard base URL")
     parser.add_argument("--probe", action="store_true", help="Probe runtime targets")
     parser.add_argument("--local-app", action="store_true", help="Probe an in-process sibling uHOME-server app")
     parser.add_argument("--wizard-local-app", action="store_true", help="Probe an in-process sibling uDOS-wizard app")
-    parser.add_argument("--control-brief", action="store_true", help="Build a control-session brief from probe output")
-    parser.add_argument("--remote-bridge-brief", action="store_true", help="Build a Wizard-assisted remote-control bridge brief")
+    parser.add_argument("--control-brief", action="store_true", help="Build a runtime-session brief from probe output")
+    parser.add_argument("--remote-bridge-brief", action="store_true", help="Build a Wizard-assisted remote-runtime bridge brief")
     parser.add_argument("--json", action="store_true", help="Print JSON output")
     args = parser.parse_args()
 
@@ -46,26 +46,29 @@ def main() -> int:
         offer = probe_local_wizard_app(offer, workspace_root=REPO_ROOT.parent)
     if args.control_brief:
         probe_key = "local_runtime_probe" if args.local_app else "runtime_probe"
-        offer = build_control_session_brief(offer, probe_key=probe_key)
+        offer = build_runtime_session_brief(offer, probe_key=probe_key)
     if args.remote_bridge_brief:
         probe_key = "local_wizard_probe" if args.wizard_local_app else "wizard_probe"
-        offer = build_remote_control_bridge_brief(offer, probe_key=probe_key)
+        offer = build_remote_runtime_bridge_brief(offer, probe_key=probe_key)
 
     if args.json:
         print(json.dumps(offer, indent=2))
     else:
+        print(f"profile={offer['profile']}")
         print(f"surface={offer['surface']}")
         print(f"transport={offer['transport']}")
         print(f"runtime_owner={offer['runtime_owner']}")
         print(f"shell_adapter={offer['shell_adapter']}")
+        print(f"deployment_modes={','.join(offer.get('deployment_modes', []))}")
+        print(f"app_targets={','.join(offer.get('app_targets', []))}")
         print(f"capabilities={','.join(offer['capabilities'])}")
         print(f"runtime_targets={','.join(target['name'] for target in offer['runtime_targets'])}")
         if offer.get("wizard_targets"):
             print(f"wizard_targets={','.join(target['name'] for target in offer['wizard_targets'])}")
-        if "control_session_brief" in offer:
-            print(f"recommended_action={offer['control_session_brief']['recommended_action']}")
-        if "remote_control_bridge_brief" in offer:
-            print(f"remote_bridge_action={offer['remote_control_bridge_brief']['recommended_action']}")
+        if "runtime_session_brief" in offer:
+            print(f"recommended_action={offer['runtime_session_brief']['recommended_action']}")
+        if "remote_runtime_bridge_brief" in offer:
+            print(f"remote_bridge_action={offer['remote_runtime_bridge_brief']['recommended_action']}")
 
     return 0
 

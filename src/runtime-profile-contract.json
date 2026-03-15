@@ -1,8 +1,8 @@
 {
-  "surface": "living-room-kiosk",
+  "profile": "shared-tablet-runtime",
   "transport": "local-network",
   "server_contract": "uhome-server",
-  "capabilities": [
+  "capability_profile": [
     "media.browse",
     "session.launch"
   ]

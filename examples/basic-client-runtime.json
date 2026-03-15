@@ -1,9 +1,8 @@
 {
-  "surface": "controller-browser",
+  "profile": "shared-mobile-runtime",
   "transport": "local-network",
   "server_contract": "uhome-server",
-  "capabilities": [
-    "media.browse",
+  "capability_profile": [
     "controller.navigate"
   ]
 }
