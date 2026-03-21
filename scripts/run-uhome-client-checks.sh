@@ -71,15 +71,28 @@ for profile in profiles:
         raise SystemExit("profile entry deployment_modes must include standalone-uhome and integrated-udos")
 PY
 
-if rg -n '/Users/fredbook/Code|~/Users/fredbook/Code' \
-  "$REPO_ROOT/README.md" \
-  "$REPO_ROOT/docs" \
-  "$REPO_ROOT/src" \
-  "$REPO_ROOT/tests" \
-  "$REPO_ROOT/examples" \
-  "$REPO_ROOT/config"; then
-  echo "private local-root reference found in uHOME-client" >&2
-  exit 1
+if command -v rg >/dev/null 2>&1; then
+  if rg -n '/Users/fredbook/Code|~/Users/fredbook/Code' \
+    "$REPO_ROOT/README.md" \
+    "$REPO_ROOT/docs" \
+    "$REPO_ROOT/src" \
+    "$REPO_ROOT/tests" \
+    "$REPO_ROOT/examples" \
+    "$REPO_ROOT/config"; then
+    echo "private local-root reference found in uHOME-client" >&2
+    exit 1
+  fi
+else
+  if grep -R -nE '/Users/fredbook/Code|~/Users/fredbook/Code' \
+    "$REPO_ROOT/README.md" \
+    "$REPO_ROOT/docs" \
+    "$REPO_ROOT/src" \
+    "$REPO_ROOT/tests" \
+    "$REPO_ROOT/examples" \
+    "$REPO_ROOT/config" >/dev/null 2>&1; then
+    echo "private local-root reference found in uHOME-client" >&2
+    exit 1
+  fi
 fi
 
 python3 "$REPO_ROOT/scripts/smoke/session_offer.py" --json >/dev/null
