@@ -1,0 +1,24 @@
+# Submission: `#binder/uhome-client-activation` tranche 1
+
+- binder: `#binder/uhome-client-activation`
+- owning repo: `uHOME-client`
+- branch: `develop`
+- summary:
+  - added the first uHOME-client activation doc
+  - added a repo-level validation entrypoint for client session contract integrity
+  - added minimal client contract examples and activated the repo entry surfaces
+- validation run:
+  - `uHOME-client/scripts/run-uhome-client-checks.sh`
+- policy checks:
+  - activation stays inside client interaction ownership
+  - activation does not claim server runtime or core semantic ownership
+- promotable outputs:
+  - `uHOME-client/docs/activation.md`
+  - `uHOME-client/src/session-contract.json`
+  - `uHOME-client/scripts/run-uhome-client-checks.sh`
+  - `uHOME-client/examples/basic-client-session.json`
+- risks:
+  - validation is currently structural and contract-focused; there is no runnable UI implementation yet
+- next promotion step:
+  - commit and push `uHOME-client` and `uDOS-dev`
+  - advance the roadmap ledger toward the next activation target

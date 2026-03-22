@@ -4,6 +4,19 @@ set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+VENV_DIR="$REPO_ROOT/.venv"
+BASE_PYTHON_BIN=""
+PYTHON_BIN="$VENV_DIR/bin/python"
+
+pick_python() {
+  for candidate in python3.13 python3.12 python3.11 python3; do
+    if command -v "$candidate" >/dev/null 2>&1; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
 
 require_file() {
   if [ ! -f "$1" ]; then
@@ -13,6 +26,21 @@ require_file() {
 }
 
 cd "$REPO_ROOT"
+
+BASE_PYTHON_BIN="$(pick_python)"
+if [ -z "$BASE_PYTHON_BIN" ]; then
+  echo "no python interpreter available" >&2
+  exit 1
+fi
+
+if [ ! -x "$PYTHON_BIN" ]; then
+  "$BASE_PYTHON_BIN" -m venv "$VENV_DIR"
+fi
+
+if ! "$PYTHON_BIN" -c 'import cryptography, fastapi, httpx, pydantic, uvicorn' >/dev/null 2>&1; then
+  "$PYTHON_BIN" -m pip install --upgrade pip setuptools wheel >/dev/null
+  "$PYTHON_BIN" -m pip install cryptography fastapi httpx pydantic uvicorn >/dev/null
+fi
 
 require_file "$REPO_ROOT/README.md"
 require_file "$REPO_ROOT/docs/architecture.md"
@@ -33,7 +61,7 @@ require_file "$REPO_ROOT/config/README.md"
 require_file "$REPO_ROOT/examples/README.md"
 require_file "$REPO_ROOT/examples/basic-client-runtime.json"
 
-python3 - <<'PY'
+"$PYTHON_BIN" - <<'PY'
 import json
 from pathlib import Path
 
@@ -95,10 +123,10 @@ else
   fi
 fi
 
-python3 "$REPO_ROOT/scripts/smoke/session_offer.py" --json >/dev/null
-python3 "$REPO_ROOT/scripts/smoke/session_offer.py" --json --local-app >/dev/null
-python3 "$REPO_ROOT/scripts/smoke/session_offer.py" --json --local-app --control-brief >/dev/null
-python3 "$REPO_ROOT/scripts/smoke/session_offer.py" --surface remote-runtime-bridge --json --wizard-local-app --remote-bridge-brief >/dev/null
-python3 -m unittest discover -s tests -p 'test_*.py'
+"$PYTHON_BIN" "$REPO_ROOT/scripts/smoke/session_offer.py" --json >/dev/null
+"$PYTHON_BIN" "$REPO_ROOT/scripts/smoke/session_offer.py" --json --local-app >/dev/null
+"$PYTHON_BIN" "$REPO_ROOT/scripts/smoke/session_offer.py" --json --local-app --control-brief >/dev/null
+"$PYTHON_BIN" "$REPO_ROOT/scripts/smoke/session_offer.py" --surface remote-runtime-bridge --json --wizard-local-app --remote-bridge-brief >/dev/null
+"$PYTHON_BIN" -m unittest discover -s tests -p 'test_*.py'
 
 echo "uHOME-client checks passed"
