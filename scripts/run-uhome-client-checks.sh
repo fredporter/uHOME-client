@@ -4,6 +4,8 @@ set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+SHARED_PYTHON_BIN="${UDOS_SHARED_PYTHON_BIN:-}"
+USE_SHARED_RESOURCES="${UDOS_USE_SHARED_RESOURCES:-1}"
 VENV_DIR="$REPO_ROOT/.venv"
 BASE_PYTHON_BIN=""
 PYTHON_BIN="$VENV_DIR/bin/python"
@@ -27,13 +29,25 @@ require_file() {
 
 cd "$REPO_ROOT"
 
+if [ "$USE_SHARED_RESOURCES" = "1" ] && [ -z "$SHARED_PYTHON_BIN" ]; then
+  FAMILY_HELPER="$REPO_ROOT/../scripts/lib/family-python.sh"
+  if [ -f "$FAMILY_HELPER" ]; then
+    # shellcheck source=/dev/null
+    . "$FAMILY_HELPER"
+    ensure_shared_python
+    SHARED_PYTHON_BIN="${UDOS_SHARED_PYTHON_BIN:-}"
+  fi
+fi
+
 BASE_PYTHON_BIN="$(pick_python)"
 if [ -z "$BASE_PYTHON_BIN" ]; then
   echo "no python interpreter available" >&2
   exit 1
 fi
 
-if [ ! -x "$PYTHON_BIN" ]; then
+if [ -n "$SHARED_PYTHON_BIN" ] && [ -x "$SHARED_PYTHON_BIN" ]; then
+  PYTHON_BIN="$SHARED_PYTHON_BIN"
+elif [ ! -x "$PYTHON_BIN" ]; then
   "$BASE_PYTHON_BIN" -m venv "$VENV_DIR"
 fi
 
@@ -111,7 +125,7 @@ if command -v rg >/dev/null 2>&1; then
     exit 1
   fi
 else
-  if grep -R -nE '/Users/fredbook/Code|~/Users/fredbook/Code' \
+  if grep -RInE -I --exclude-dir='__pycache__' '/Users/fredbook/Code|~/Users/fredbook/Code' \
     "$REPO_ROOT/README.md" \
     "$REPO_ROOT/docs" \
     "$REPO_ROOT/src" \
