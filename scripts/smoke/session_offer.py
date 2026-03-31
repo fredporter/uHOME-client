@@ -26,10 +26,18 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Render a uHOME-client starter runtime offer")
     parser.add_argument("--surface", "--profile", dest="surface", help="Runtime profile or surface key to render")
     parser.add_argument("--server-url", default="http://127.0.0.1:8000", help="uHOME-server base URL")
-    parser.add_argument("--wizard-url", default="http://127.0.0.1:8787", help="uDOS-wizard base URL")
+    parser.add_argument(
+        "--wizard-url",
+        default="http://127.0.0.1:8787",
+        help="Optional external orchestration base URL (only if UH_EXTERNAL_ORCHESTRATION_CONTRACT_PATH is set)",
+    )
     parser.add_argument("--probe", action="store_true", help="Probe runtime targets")
     parser.add_argument("--local-app", action="store_true", help="Probe an in-process sibling uHOME-server app")
-    parser.add_argument("--wizard-local-app", action="store_true", help="Probe an in-process sibling uDOS-wizard app")
+    parser.add_argument(
+        "--wizard-local-app",
+        action="store_true",
+        help="Legacy flag; optional orchestration in-process probe (no default checkout)",
+    )
     parser.add_argument("--control-brief", action="store_true", help="Build a runtime-session brief from probe output")
     parser.add_argument("--remote-bridge-brief", action="store_true", help="Build a Wizard-assisted remote-runtime bridge brief")
     parser.add_argument("--json", action="store_true", help="Print JSON output")

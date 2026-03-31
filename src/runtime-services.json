@@ -1,0 +1,20 @@
+{
+  "version": "v2.0.2",
+  "owner": "uHOME-server",
+  "services": [
+    {
+      "key": "runtime.command-registry",
+      "owner": "uHOME-server",
+      "route": "/api/runtime/commands",
+      "stability": "stable",
+      "consumers": ["uHOME-client"]
+    },
+    {
+      "key": "runtime.capability-registry",
+      "owner": "uHOME-server",
+      "route": "/api/runtime/capabilities",
+      "stability": "stable",
+      "consumers": ["uHOME-client"]
+    }
+  ]
+}

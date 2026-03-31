@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Callable
 from urllib.request import Request, urlopen
@@ -11,8 +12,38 @@ def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def get_code_root(repo_root: Path) -> Path:
+    candidate = repo_root.resolve()
+    if candidate.name in {"uHOME-client", "uHOME-server", "uHOME-matter", "uHOME-app-android", "uHOME-app-ios"}:
+        return candidate.parents[1]
+    if candidate.name in {"uHOME-family", "uDOS-family", "sonic-family"}:
+        return candidate.parent
+    return candidate.parents[1]
+
+
+def get_uhome_family_root(repo_root: Path) -> Path:
+    candidate = repo_root.resolve()
+    if candidate.name == "uHOME-family":
+        return candidate
+    explicit = os.environ.get("UHOME_FAMILY_ROOT") or os.environ.get("UDOS_UHOME_FAMILY_ROOT")
+    if explicit:
+        return Path(explicit)
+    return get_code_root(candidate) / "uHOME-family"
+
+
+def get_uhome_server_root(repo_root: Path) -> Path:
+    return get_uhome_family_root(repo_root) / "uHOME-server"
+
+
+def get_runtime_services_manifest_path(repo_root: Path) -> Path:
+    env = os.environ.get("UHOME_RUNTIME_SERVICES_JSON", "").strip()
+    if env:
+        return Path(env)
+    return repo_root / "src" / "runtime-services.json"
+
+
 def load_runtime_services(repo_root: Path) -> tuple[dict, list[dict]]:
-    manifest_path = repo_root.parent / "uDOS-core" / "contracts" / "runtime-services.json"
+    manifest_path = get_runtime_services_manifest_path(repo_root)
     manifest = load_json(manifest_path)
     services = [
         {
@@ -29,23 +60,12 @@ def load_runtime_services(repo_root: Path) -> tuple[dict, list[dict]]:
     return manifest, services
 
 
-def load_wizard_contract(repo_root: Path) -> dict:
-    contract_path = repo_root.parent / "uDOS-wizard" / "contracts" / "orchestration-contract.json"
-    return load_json(contract_path)
-
-
-def _wizard_contract_source_from_offer(offer: dict) -> Path:
-    runtime_source = Path(offer["runtime_service_source"]).resolve()
-    workspace_root = runtime_source.parents[2]
-    return workspace_root / "uDOS-wizard" / "contracts" / "orchestration-contract.json"
-
-
 def _usage_for_service(key: str) -> str:
     if key == "runtime.command-registry":
         return "server endpoint coverage for app-consumed client runtime profiles"
     if key == "runtime.capability-registry":
-        return "capability alignment between runtime profiles and shell routing"
-    return "shared platform contract consumption"
+        return "capability alignment between runtime profiles and kiosk routing"
+    return "uHOME platform contract consumption"
 
 
 def build_offer(repo_root: Path, surface_name: str | None = None) -> dict:
@@ -68,7 +88,7 @@ def build_offer(repo_root: Path, surface_name: str | None = None) -> dict:
     return {
         "version": runtime_manifest["version"],
         "foundation_version": profile_map["version"],
-        "runtime_service_source": str(repo_root.parent / "uDOS-core" / "contracts" / "runtime-services.json"),
+        "runtime_service_source": str(get_runtime_services_manifest_path(repo_root).resolve()),
         "family_modes": profile_map.get("family_modes", []),
         "profile": profile["profile"],
         "surface": profile["surface_key"],
@@ -112,28 +132,30 @@ def attach_runtime_targets(offer: dict, base_url: str) -> dict:
 
 
 def attach_wizard_targets(offer: dict, wizard_url: str) -> dict:
+    """Optional external orchestration targets (legacy name). Empty unless enabled explicitly."""
     enriched = dict(offer)
     targets = []
-    if offer.get("transport") == "wizard-assisted":
-        contract_source = _wizard_contract_source_from_offer(offer)
+    contract_path_str = os.environ.get("UH_EXTERNAL_ORCHESTRATION_CONTRACT_PATH", "").strip()
+    if offer.get("transport") == "orchestration-assisted" and contract_path_str:
+        contract_source = Path(contract_path_str).resolve()
         contract = load_json(contract_source)
         routes = contract["routes"]
         surface = offer.get("surface", "remote-control")
         targets.append(
             {
-                "name": "wizard_dispatch",
+                "name": "orchestration_dispatch",
                 "url": f"{wizard_url}{routes['dispatch']['path']}?task={surface}&mode=auto&surface=remote-control",
                 "method": routes["dispatch"]["method"],
             }
         )
         targets.append(
             {
-                "name": "wizard_workflow_plan",
+                "name": "orchestration_workflow_plan",
                 "url": f"{wizard_url}{routes['workflow_plan']['path']}?objective=shared-remote-flow&mode=auto",
                 "method": routes["workflow_plan"]["method"],
             }
         )
-        enriched["wizard_contract_source"] = str(contract_source)
+        enriched["orchestration_contract_source"] = str(contract_source)
     enriched["wizard_targets"] = targets
     return enriched
 
@@ -173,7 +195,7 @@ def _default_fetcher(url: str, method: str = "GET", payload: dict | None = None)
 def probe_local_server_app(offer: dict, workspace_root: Path) -> dict:
     from fastapi.testclient import TestClient
 
-    server_repo = workspace_root / "uHOME-server"
+    server_repo = get_uhome_server_root(workspace_root)
     sys.path.insert(0, str(server_repo / "src"))
     from uhome_server.app import create_app  # type: ignore
 
@@ -204,31 +226,10 @@ def probe_local_server_app(offer: dict, workspace_root: Path) -> dict:
 
 
 def probe_local_wizard_app(offer: dict, workspace_root: Path) -> dict:
-    from fastapi.testclient import TestClient
-
-    wizard_repo = workspace_root / "uDOS-wizard"
-    sys.path.insert(0, str(wizard_repo))
-    from wizard.main import app  # type: ignore
-
-    client = TestClient(app)
-    results = []
-    for endpoint in offer.get("wizard_targets", []):
-        path = endpoint["url"].replace("http://127.0.0.1:8787", "")
-        response = client.get(path)
-        payload = response.json()
-        results.append(
-            {
-                "name": endpoint["name"],
-                "path": path,
-                "method": endpoint.get("method", "GET"),
-                "status_code": response.status_code,
-                "keys": sorted(payload.keys()),
-                "payload": payload,
-            }
-        )
-
+    """Probe an optional external orchestration app; no uDOS checkout is implied."""
+    _ = workspace_root
     probed = dict(offer)
-    probed["local_wizard_probe"] = results
+    probed.setdefault("local_wizard_probe", [])
     return probed
 
 
@@ -285,12 +286,16 @@ def build_runtime_session_brief(offer: dict, probe_key: str = "runtime_probe") -
 
 def build_remote_runtime_bridge_brief(offer: dict, probe_key: str = "local_wizard_probe") -> dict:
     probes = {item["name"]: item for item in offer.get(probe_key, [])}
-    dispatch = probes.get("wizard_dispatch", {}).get("payload", {})
-    workflow_plan = probes.get("wizard_workflow_plan", {}).get("payload", {})
+    dispatch = probes.get("orchestration_dispatch", probes.get("wizard_dispatch", {})).get("payload", {})
+    workflow_plan = probes.get(
+        "orchestration_workflow_plan",
+        probes.get("wizard_workflow_plan", {}),
+    ).get("payload", {})
+    contract_src = offer.get("orchestration_contract_source") or offer.get("wizard_contract_source")
     bridge_brief = {
         "profile": offer.get("profile", offer.get("surface", "remote-runtime-bridge")),
         "surface": offer.get("surface", "remote-control"),
-        "recommended_action": "request_remote_dispatch" if dispatch else "wizard_unavailable",
+        "recommended_action": "request_remote_dispatch" if dispatch else "orchestration_unavailable",
         "dispatch_version": dispatch.get("dispatch_version", "unknown"),
         "provider": dispatch.get("provider", "unknown"),
         "executor": dispatch.get("executor", "unknown"),
@@ -298,11 +303,12 @@ def build_remote_runtime_bridge_brief(offer: dict, probe_key: str = "local_wizar
         "surface_route": dispatch.get("route_contract", {}).get("surface", dispatch.get("surface", "remote-control")),
         "workflow_plan_version": workflow_plan.get("plan_version", "unknown"),
         "workflow_step_count": workflow_plan.get("step_count", 0),
-        "wizard_contract_source": offer.get("wizard_contract_source"),
+        "orchestration_contract_source": contract_src,
+        "wizard_contract_source": contract_src,
     }
     if dispatch:
         bridge_brief["dispatch_request"] = {
-            "target": "wizard_dispatch",
+            "target": "orchestration_dispatch",
             "task": dispatch.get("request", {}).get("task", offer.get("surface", "remote-control")),
             "mode": dispatch.get("request", {}).get("mode", "auto"),
             "surface": dispatch.get("request", {}).get("surface", "remote-control"),

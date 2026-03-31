@@ -2,8 +2,8 @@
   "version": "v2.0.3",
   "owner": "uHOME-client",
   "family_modes": [
-    "standalone-uhome",
-    "integrated-udos"
+    "integrated-udos",
+    "standalone-uhome"
   ],
   "profiles": [
     {
@@ -11,10 +11,10 @@
       "surface_key": "controller-browser",
       "transport": "local-network",
       "runtime_owner": "uHOME-server",
-      "shell_adapter": "uDOS-shell",
+      "shell_adapter": "thin-kiosk",
       "deployment_modes": [
-        "standalone-uhome",
-        "integrated-udos"
+        "integrated-udos",
+        "standalone-uhome"
       ],
       "app_targets": [
         "uHOME-app-android",
@@ -30,10 +30,10 @@
       "surface_key": "living-room-kiosk",
       "transport": "local-network",
       "runtime_owner": "uHOME-server",
-      "shell_adapter": "uDOS-shell",
+      "shell_adapter": "thin-kiosk",
       "deployment_modes": [
-        "standalone-uhome",
-        "integrated-udos"
+        "integrated-udos",
+        "standalone-uhome"
       ],
       "app_targets": [
         "uHOME-app-android",
@@ -47,12 +47,12 @@
     {
       "profile": "remote-runtime-bridge",
       "surface_key": "remote-control",
-      "transport": "wizard-assisted",
+      "transport": "local-network",
       "runtime_owner": "uHOME-server",
-      "shell_adapter": "uDOS-shell",
+      "shell_adapter": "thin-kiosk",
       "deployment_modes": [
-        "standalone-uhome",
-        "integrated-udos"
+        "integrated-udos",
+        "standalone-uhome"
       ],
       "app_targets": [
         "uHOME-app-android",
