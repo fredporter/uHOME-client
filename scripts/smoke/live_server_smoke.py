@@ -34,7 +34,7 @@ def _wait_for_http(url: str, timeout: float = 10.0) -> None:
 
 
 def _server_python(server_repo: Path) -> str:
-    candidate = server_repo / ".venv" / "bin" / "python"
+    candidate = Path.home() / ".udos" / "venv" / "uhome-server" / "bin" / "python"
     if candidate.exists():
         return str(candidate)
     return sys.executable
